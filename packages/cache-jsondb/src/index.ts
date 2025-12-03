@@ -117,7 +117,7 @@ namespace JsonDBCache {
   }
 
   export const Config: Schema<Config> = Schema.object({
-    path: Schema.string().description('缓存文件的路径').default('cache.json'),
+    path: Schema.string().description('缓存文件的路径').default('data/cache/cache.json'),
   })
 }
 

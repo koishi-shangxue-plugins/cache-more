@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 function patchTsConfig() {
     try {
@@ -46,7 +46,7 @@ function patchTsConfig() {
         const tsconfigContent = fs.readFileSync(rootTsConfigPath, 'utf8');
 
         // 检查是否已经存在要添加的路径配置
-        const newPath = 'external/cache-more/packages/*/src';
+        const newPath = 'external/service-more/packages/*/src';
 
         if (tsconfigContent.includes(newPath)) {
             console.log('✅ 路径配置已存在，无需修改');
