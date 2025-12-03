@@ -255,13 +255,14 @@ class JsonDBDriver extends Driver
     // $count: 1 的情况
     if (aggrKey === '$count') return rows.length;
 
-    if (typeof aggrValue !== 'string')
+    const values = rows.map(row =>
     {
-      this.logger.warn('unsupported aggregation expression', aggrValue);
-      return;
-    }
+      // 如果 aggrValue 是字符串（字段名），则从行中取值
+      // 否则，直接使用 aggrValue 本身（常量）
+      const value = typeof aggrValue === 'string' ? get(row, aggrValue) : aggrValue;
+      return typeof value === 'number' ? value : 0; // 只处理数字
+    });
 
-    const values = rows.map(row => get(row, aggrValue)).filter(v => typeof v === 'number');
     if (values.length === 0) return 0;
 
     switch (aggrKey)
