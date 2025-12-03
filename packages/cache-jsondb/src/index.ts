@@ -36,8 +36,9 @@ abstract class Cache extends Service {
   }
 }
 
-// JsonDB 缓存服务的实现
 class JsonDBCache extends Cache {
+  static inject = ['logger']
+
   private _path: string
   private store: Dict<Dict<any>> = Object.create(null)
   private _debounce: NodeJS.Timeout | null = null
@@ -47,7 +48,6 @@ class JsonDBCache extends Cache {
     this._path = resolve(ctx.baseDir, config.path)
     this.init()
 
-    // 插件卸载时，如果存在未写入的变更，则立即写入
     ctx.on('dispose', () => {
       if (this._debounce) {
         clearTimeout(this._debounce)
@@ -58,10 +58,8 @@ class JsonDBCache extends Cache {
 
   private async init() {
     try {
-      // 确保缓存目录存在，避免写入时报错
       await fs.mkdir(dirname(this._path), { recursive: true })
       const data = await fs.readFile(this._path, 'utf8')
-      // 文件为空则无需解析
       if (!data) return
       try {
         this.store = JSON.parse(data)
@@ -70,25 +68,21 @@ class JsonDBCache extends Cache {
       }
     } catch (err) {
       if (err.code === 'ENOENT') {
-        // 文件不存在是正常情况，首次写入时会自动创建
       } else {
         this.ctx.logger('cache').warn('failed to read cache file: %s', err)
       }
     }
   }
 
-  // 立即写入磁盘
   private async flush() {
     this._debounce = null
     try {
-      // 美化输出，方便调试
       await fs.writeFile(this._path, JSON.stringify(this.store, null, 2))
     } catch (err) {
       this.ctx.logger('cache').warn('failed to write cache file: %s', err)
     }
   }
 
-  // 防抖写入，减少IO操作
   private write() {
     if (this._debounce) clearTimeout(this._debounce)
     this._debounce = setTimeout(() => this.flush(), 1000)
