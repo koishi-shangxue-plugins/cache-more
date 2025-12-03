@@ -3,14 +3,14 @@ import { Level, ChainedBatch } from 'level';
 import { resolve } from 'node:path';
 import { AbstractLevel } from 'abstract-level';
 
-// 获取对象的嵌套属性值 (从 jsondb 驱动复制)
+// 获取对象的嵌套属性值
 function get(obj: any, path: string)
 {
   if (!path) return obj;
   return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 }
 
-// 内存查询求值器 (从 jsondb 驱动复制)
+// 内存查询求值器
 function evaluateQuery(row: any, query: Query.Expr): boolean
 {
   // 逻辑操作符: $and, $or, $not
@@ -86,14 +86,14 @@ class LevelDBDriver extends Driver
   {
     this.db = new Level(this._path, { valueEncoding: 'json' });
     await this.db.open();
-    this.logger.info('database opened at %c', this._path);
+    this.logger.info('数据库已在 %c 打开', this._path);
     this.ctx.on('dispose', () => this.stop());
   }
 
   async stop()
   {
     await this.db.close();
-    this.logger.info('database closed');
+    this.logger.info('数据库已关闭');
   }
 
   private getTable(name: string): AbstractLevel<any, string, any>
@@ -104,12 +104,13 @@ class LevelDBDriver extends Driver
 
   private getCounter(name: string): AbstractLevel<any, string, number>
   {
+    // 为自增主键创建一个独立的 sublevel
     return this.db.sublevel(name, { valueEncoding: 'json' });
   }
 
   async prepare(table: string)
   {
-    // leveldb 无需 prepare 操作，表会在第一次使用时自动创建 (通过 sublevel)
+    // leveldb 无需 prepare 操作，表会在第一次使用时自动创建
   }
 
   async drop(table: string)
@@ -129,7 +130,7 @@ class LevelDBDriver extends Driver
     const tableNames = new Set<string>();
 
     // 通过遍历 key 并解析 sublevel 前缀来获取所有表名
-    // 格式为 !<sublevel>!<key>
+    // sublevel 的 key 格式为 !<sublevel-name>!<key>
     for await (const key of this.db.keys({ gte: '!', lte: '~' }))
     {
       if (key.startsWith('!'))
@@ -255,7 +256,7 @@ class LevelDBDriver extends Driver
       case '$min': return Math.min(...values);
     }
 
-    this.logger.warn('unsupported aggregation operator', aggrKey);
+    this.logger.warn('不支持的聚合运算符', aggrKey);
     return 0;
   }
 
@@ -334,10 +335,10 @@ class LevelDBDriver extends Driver
       try
       {
         maxId = await counterDb.get(tableName) || 0;
-      } catch { /* key not found */ }
+      } catch { /* 键未找到，忽略 */ }
       const newId = maxId + 1;
       newRow[primaryKeys] = newId;
-      // counter update should also be in batch
+      // 计数器更新也应包含在事务批处理中
       const batch = this._activeBatch || this.db.batch();
       batch.put(tableName, newId);
       if (!this._activeBatch) await batch.write();
@@ -394,17 +395,18 @@ class LevelDBDriver extends Driver
           try
           {
             maxId = await counterDb.get(tableName) || 0;
-          } catch { /* key not found */ }
+          } catch { /* 键未找到，忽略 */ }
           const newId = maxId + 1;
           newRow[primaryKeys] = newId;
-          // counter update should also be in batch
+          // 计数器更新也应包含在事务批处理中
           const counterBatch = this._activeBatch || this.db.batch();
           counterBatch.put(tableName, newId);
           if (!this._activeBatch) await counterBatch.write();
         }
         const key = this._constructKey(primaryKeys, newRow);
         batch.put(key, newRow);
-        allData.push(newRow); // Add to in-memory array to be found by subsequent items
+        // 添加到内存数组中，以便后续项目可以找到
+        allData.push(newRow);
         result.inserted++;
       }
     }
@@ -417,7 +419,7 @@ class LevelDBDriver extends Driver
   {
     if (this._activeBatch)
     {
-      // already in a transaction, just execute the callback
+      // 如果已经在一个事务中，直接执行回调
       return callback();
     }
 
@@ -428,12 +430,12 @@ class LevelDBDriver extends Driver
       await this._activeBatch.write();
     } catch (e)
     {
-      // if any error occurs, do not write the batch
-      this.logger.error('transaction failed, changes discarded.');
+      // 如果发生任何错误，则不写入批处理
+      this.logger.error('事务失败，更改已丢弃。');
       throw e;
     } finally
     {
-      // ensure the batch is cleared
+      // 确保批处理被清除
       this._activeBatch = null;
     }
   }
@@ -460,7 +462,7 @@ class LevelDBDriver extends Driver
     const name = index.name || Object.keys(index.keys).join('_');
     if (indexes.some(i => i.name === name))
     {
-      this.logger.warn(`index ${name} on table ${table} already exists.`);
+      this.logger.warn(`表 ${table} 上的索引 ${name} 已存在。`);
       return;
     }
     indexes.push({ ...index, name });
@@ -491,7 +493,7 @@ namespace LevelDBDriver
     path: Schema.path({
       filters: ['directory'],
       allowCreate: true,
-    }).description('数据库目录的路径。').default('data/database/leveldb'),
+    }).description('数据库目录的文件夹路径。').default('data/database/leveldb'),
   });
 }
 

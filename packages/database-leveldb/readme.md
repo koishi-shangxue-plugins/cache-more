@@ -1,19 +1,20 @@
 # koishi-plugin-database-leveldb
 
-基于 JSON 文件的 Koishi 数据库服务。
+基于 LevelDB 的 Koishi 数据库服务。
 
 ## 特性
 
-- **轻量级**: 无外部数据库依赖，非常适合小型机器人。
+- **高性能**: 基于 LevelDB 键值存储，有较高的读写性能。
+- **轻量级**: 无外部数据库依赖，非常适合中小型机器人。
 - **易于使用**: 配置简单，即插即用。
 
 ## 说明
 
-数据库文件默认存放于 `data/database/koishi.json`
+数据库文件默认存放于 `data/database/leveldb` 目录。
 
 ## 使用方法
 
-完整用法请参考`koishi`文档 ->  [koishi.chat/zh-CN/guide/database](https://koishi.chat/zh-CN/guide/database/index.html)
+完整用法请参考 `koishi` 文档 -> [koishi.chat/zh-CN/guide/database](https://koishi.chat/zh-CN/guide/database/index.html)
 
 ### 在你的插件中使用
 
@@ -65,4 +66,3 @@ export async function apply(ctx: Context) {
     return next()
   })
 }
-```
