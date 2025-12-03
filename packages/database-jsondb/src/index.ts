@@ -73,6 +73,7 @@ class JsonDBDriver extends Driver
   private _path: string;
   private store: Dict<any[]> = Object.create(null);
   private _debounce: NodeJS.Timeout | null = null;
+  private _transactionalStore: Dict<any[]> | null = null; // 用于事务的临时存储
 
   constructor(public ctx: Context, public config: JsonDBDriver.Config)
   {
@@ -114,6 +115,8 @@ class JsonDBDriver extends Driver
   private async flush()
   {
     this._debounce = null;
+    // 如果在事务中，则不执行写入操作
+    if (this._transactionalStore) return;
     try
     {
       await fs.writeFile(this._path, JSON.stringify(this.store, null, 2));
@@ -132,13 +135,20 @@ class JsonDBDriver extends Driver
 
   async drop(table: string)
   {
-    delete this.store[table];
+    const store = this._transactionalStore || this.store;
+    delete store[table];
     this.write();
   }
 
   async dropAll()
   {
-    this.store = Object.create(null);
+    if (this._transactionalStore)
+    {
+      this._transactionalStore = Object.create(null);
+    } else
+    {
+      this.store = Object.create(null);
+    }
     this.write();
   }
 
@@ -151,12 +161,14 @@ class JsonDBDriver extends Driver
       stats.size = fileStats.size;
     } catch { /* file does not exist */ }
 
-    for (const name in this.store)
+    const store = this._transactionalStore || this.store;
+    for (const name in store)
     {
+      if (name === '_indexes') continue;
       stats.tables[name] = {
-        count: this.store[name].length,
+        count: store[name].length,
         // 计算单表序列化后的大致字节数
-        size: Buffer.from(JSON.stringify(this.store[name])).length,
+        size: Buffer.from(JSON.stringify(store[name])).length,
       };
     }
     return stats;
@@ -164,14 +176,16 @@ class JsonDBDriver extends Driver
 
   async prepare(table: string)
   {
-    this.store[table] ||= [];
+    const store = this._transactionalStore || this.store;
+    store[table as string] ||= [];
   }
 
   async get(sel: Selection.Immutable)
   {
     const { table, query, args } = sel;
     const [options] = args;
-    const tableData = this.store[table as string] || [];
+    const store = this._transactionalStore || this.store;
+    const tableData = store[table as string] || [];
 
     // 筛选
     let result = tableData.filter(row => evaluateQuery(row, query));
@@ -238,7 +252,9 @@ class JsonDBDriver extends Driver
     const aggrKey = Object.keys(expr)[0] as keyof Eval.Aggr<any>;
     const aggrValue = expr[aggrKey];
 
+    // $count: 1 的情况
     if (aggrKey === '$count') return rows.length;
+
     if (typeof aggrValue !== 'string')
     {
       this.logger.warn('unsupported aggregation expression', aggrValue);
@@ -262,7 +278,8 @@ class JsonDBDriver extends Driver
   async set(sel: Selection.Mutable, update: {})
   {
     const { table, query, ref } = sel;
-    const tableData = this.store[table as string] || [];
+    const store = this._transactionalStore || this.store;
+    const tableData = store[table as string] || [];
     let matchedCount = 0;
     let modifiedCount = 0;
 
@@ -287,7 +304,8 @@ class JsonDBDriver extends Driver
   async remove(sel: Selection.Mutable)
   {
     const { table, query } = sel;
-    const tableData = this.store[table as string] || [];
+    const store = this._transactionalStore || this.store;
+    const tableData = store[table as string] || [];
     let removedCount = 0;
     const newTableData = tableData.filter(row =>
     {
@@ -300,7 +318,7 @@ class JsonDBDriver extends Driver
     });
     if (removedCount > 0)
     {
-      this.store[table as string] = newTableData;
+      store[table as string] = newTableData;
       this.write();
     }
     return { matched: removedCount, removed: removedCount };
@@ -309,7 +327,8 @@ class JsonDBDriver extends Driver
   async create(sel: Selection.Mutable, data: {})
   {
     const { table, model } = sel;
-    const tableData = this.store[table as string] ||= [];
+    const store = this._transactionalStore || this.store;
+    const tableData = store[table as string] ||= [];
     const newRow = model.create(data);
 
     if (model.primary && model.autoInc && !Array.isArray(model.primary))
@@ -330,7 +349,8 @@ class JsonDBDriver extends Driver
   async upsert(sel: Selection.Mutable, data: any[], keys: string[])
   {
     const { table, model, ref } = sel;
-    const tableData = this.store[table as string] ||= [];
+    const store = this._transactionalStore || this.store;
+    const tableData = store[table as string] ||= [];
     const result = { inserted: 0, matched: 0, modified: 0 };
 
     for (const item of data)
@@ -374,28 +394,62 @@ class JsonDBDriver extends Driver
     if (result.inserted > 0 || result.modified > 0) this.write();
     return result;
   }
-  // jsondb 不支持事务
   async withTransaction(callback: () => Promise<void>)
   {
-    this.logger.warn('jsondb does not support withTransaction.');
-    await callback();
+    if (this._transactionalStore)
+    {
+      // 如果已经在一个事务中，直接在当前事务中执行
+      return callback();
+    }
+
+    // 创建事务快照
+    this._transactionalStore = JSON.parse(JSON.stringify(this.store));
+    try
+    {
+      await callback();
+      // 提交事务
+      this.store = this._transactionalStore;
+      this.write();
+    } finally
+    {
+      // 结束事务
+      this._transactionalStore = null;
+    }
   }
 
-  // jsondb 不支持索引
   async getIndexes(table: string): Promise<Driver.Index[]>
   {
-    this.logger.warn('jsondb does not support getIndexes.');
-    return [];
+    const store = this._transactionalStore || this.store;
+    const indexes = store['_indexes'] || {};
+    return indexes[table] || [];
   }
 
   async createIndex(table: string, index: Driver.Index): Promise<void>
   {
-    this.logger.warn('jsondb does not support createIndex.');
+    const store = this._transactionalStore || this.store;
+    const indexes = store['_indexes'] ||= Object.create(null);
+    const tableIndexes = indexes[table] ||= [];
+    const name = index.name || Object.keys(index.keys).join('_');
+    if (tableIndexes.some(i => i.name === name))
+    {
+      this.logger.warn(`index ${name} on table ${table} already exists.`);
+      return;
+    }
+    tableIndexes.push({ ...index, name });
+    this.write();
   }
 
   async dropIndex(table: string, name: string): Promise<void>
   {
-    this.logger.warn('jsondb does not support dropIndex.');
+    const store = this._transactionalStore || this.store;
+    const indexes = store['_indexes'] || {};
+    const tableIndexes = indexes[table] || [];
+    const indexPos = tableIndexes.findIndex(i => i.name === name);
+    if (indexPos !== -1)
+    {
+      tableIndexes.splice(indexPos, 1);
+      this.write();
+    }
   }
 }
 
