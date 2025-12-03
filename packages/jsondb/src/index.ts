@@ -1,6 +1,6 @@
 import { Awaitable, Context, Dict, Schema, Service } from 'koishi'
-import { promises as fs } from 'fs'
-import { resolve } from 'path'
+import { promises as fs } from 'node:fs'
+import { resolve } from 'node:path'
 
 declare module 'koishi' {
   interface Context {
