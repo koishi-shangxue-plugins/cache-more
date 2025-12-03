@@ -377,7 +377,8 @@ class JsonDBDriver extends Driver
         }
       } else
       {
-        const newRow = model.create(item);
+        // 先创建一个空的行，然后用更新表达式计算出最终值
+        const newRow = executeUpdate(model.create(), item, ref);
         if (model.primary && model.autoInc && !Array.isArray(model.primary))
         {
           const primaryKey = model.primary;
