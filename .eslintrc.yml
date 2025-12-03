@@ -1,0 +1,16 @@
+root: true
+
+env:
+  browser: true
+  node: true
+  mocha: true
+  es2020: true
+
+globals:
+  NodeJS: true
+
+extends:
+  - '@cordisjs/eslint-config'
+
+plugins:
+  - mocha
