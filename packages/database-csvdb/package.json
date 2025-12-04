@@ -1,0 +1,44 @@
+{
+  "name": "koishi-plugin-database-csvdb",
+  "description": "JSON DB database service for Koishi",
+  "version": "1.0.0",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/koishi-shangxue-plugins/service-more.git"
+  },
+  "bugs": {
+    "url": "https://github.com/koishi-shangxue-plugins/service-more/issues"
+  },
+  "homepage": "https://github.com/koishi-shangxue-plugins/service-more",
+  "keywords": [
+    "bot",
+    "chatbot",
+    "koishi",
+    "plugin",
+    "database",
+    "client",
+    "storage"
+  ],
+  "koishi": {
+    "category": "storage",
+    "description": {
+      "en": "JSON DB database service for Koishi",
+      "zh": "基于 JSON 文件的 Koishi 数据库服务"
+    },
+    "service": {
+      "implements": [
+        "database"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "koishi": "^4.17.1"
+  }
+}
