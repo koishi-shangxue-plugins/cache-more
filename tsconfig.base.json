@@ -11,6 +11,9 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "strictBindCallApply": true,
-    "types": [ ],
+    "jsx": "preserve",
+    "types": [
+      "@koishijs/client/global"
+    ],
   },
 }

@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-database-txtdb",
-  "description": "JSON DB database service for Koishi",
+  "description": "TXT DB database service for Koishi",
   "version": "1.0.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -24,13 +24,14 @@
     "plugin",
     "database",
     "client",
-    "storage"
+    "storage",
+    "txt"
   ],
   "koishi": {
     "category": "storage",
     "description": {
-      "en": "JSON DB database service for Koishi",
-      "zh": "基于 JSON 文件的 Koishi 数据库服务"
+      "en": "TXT DB database service for Koishi",
+      "zh": "基于 TXT 文件的 Koishi 数据库服务"
     },
     "service": {
       "implements": [
