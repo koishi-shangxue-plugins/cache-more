@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-cache-csvdb",
-  "description": "JSON DB cache service for Koishi",
+  "description": "CSV DB cache service for Koishi",
   "version": "0.1.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -29,8 +29,8 @@
   "koishi": {
     "category": "storage",
     "description": {
-      "en": "JSON DB Cache Service",
-      "zh": "基于 JSON DB 的缓存服务"
+      "en": "CSV DB Cache Service",
+      "zh": "基于 CSV 文件的缓存服务"
     },
     "service": {
       "implements": [
@@ -41,7 +41,5 @@
   "peerDependencies": {
     "koishi": "^4.17.1"
   },
-  "dependencies": {
-    "@koishijs/cache": "^2.1.0"
-  }
+  "dependencies": { }
 }

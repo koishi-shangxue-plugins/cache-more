@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-cache-leveldb",
-  "description": "JSON DB cache service for Koishi",
+  "description": "LevelDB cache service for Koishi",
   "version": "0.1.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -29,8 +29,8 @@
   "koishi": {
     "category": "storage",
     "description": {
-      "en": "JSON DB Cache Service",
-      "zh": "基于 JSON DB 的缓存服务"
+      "en": "LevelDB Cache Service",
+      "zh": "基于 LevelDB 的缓存服务"
     },
     "service": {
       "implements": [
@@ -42,6 +42,7 @@
     "koishi": "^4.17.1"
   },
   "dependencies": {
-    "@koishijs/cache": "^2.1.0"
+    "abstract-level": "^1.0.4",
+    "level": "^8.0.1"
   }
 }
